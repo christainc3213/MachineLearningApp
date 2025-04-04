@@ -27,6 +27,7 @@ const Recommender: React.FC = () => {
 
     const handleRecommend = async () => {
         try {
+            // 1) Collaborative & Content from local FastAPI
             const [collabRes, contentRes] = await Promise.all([
                 fetch("http://localhost:8000/recommend/collaborative", {
                     method: "POST",
@@ -42,14 +43,25 @@ const Recommender: React.FC = () => {
 
             const collabData = await collabRes.json();
             const contentData = await contentRes.json();
-            console.log("Content-Based Response:", contentData); // 🧪 log what we got
 
+            // 2) Azure call via local '/recommend/azure'
+            //    We'll pass 'itemId' as 'contentId' to that route
+            const azureRes = await fetch("http://localhost:8000/recommend/azure", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ contentId: itemId }) // <== The only input needed
+            });
 
+            const azureData = await azureRes.json();
+            console.log("Azure Response:", azureData);
+
+            // 3) Update state
             setResults({
                 collaborative: (collabData?.recommendations || []).map(String),
                 content: (contentData?.recommendations || []).map(String),
-                azure: [] // Future model
+                azure: (azureData?.recommendations || []).map(String)
             });
+
         } catch (error) {
             console.error("Error fetching recommendations:", error);
         }
@@ -103,6 +115,6 @@ const Recommender: React.FC = () => {
             {renderResultList('Azure ML Model', results.azure)}
         </div>
     );
-
 };
+
 export default Recommender;
